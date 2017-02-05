@@ -4,7 +4,6 @@ const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 const querystring = require('querystring');
 const request = require('request');
-const async = require('async');
 require('dotenv').config();
 
 let app = express();
@@ -18,27 +17,35 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'dist')));
 
 app.get('/tweets', (req, res) => {
-  //TODO: add a query parameter to determine which accounts to fetch
   let accounts = ["realdonaldtrump", "potus", "vp", "presssec", "whitehouse"];
+
   if (req.query.exclude) {
     let excludedAccounts = req.query.exclude.split(",").map(account => account.toLowerCase());
     accounts = accounts.filter((a) => !excludedAccounts.includes(a));
   }
+
   let requests = accounts.map((accountName) => {
-    return (callback) => {
+    return new Promise((resolve, reject) => {
       request.get(`https://api.twitter.com/1.1/statuses/user_timeline.json?screen_name=${accountName}`,
-        { 'auth': { 'bearer': app.get('twitterAPIToken') }},(error, response, body) => {
-        callback(error, body);
+        { 'auth' : { 'bearer': app.get('twitterAPIToken') } },
+        (error, response, body) => {
+        if (!error) {
+          resolve(body);
+        }
+        else {
+          reject(error);
+        }
       });
-    };
+    });
   });
 
-  async.parallel(requests, (error, responses) => {
-    let mergedResponse = responses.reduce((accumulator, current) => {
+  Promise.all(requests).then(responses => {
+    let mergedResponses = responses.reduce((accumulator, current) => {
       return accumulator.concat(current);
     }, []);
 
-    res.json(mergedResponse);
+    //TODO: sort in chronological order before returning
+    res.json(mergedResponses);
   });
 });
 
