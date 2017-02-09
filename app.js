@@ -45,8 +45,18 @@ app.get('/tweets', (req, res) => {
       return accumulator.concat(current);
     }, []);
 
-    //TODO: sort in chronological order before returning
-    res.json(mergedResponses);
+    let sorted = mergedResponses.sort((one, two) => {
+      let momentOne = moment(one.created_at, "dd MMM DD HH:mm:ss ZZ YYYY");
+      let momentTwo = moment(two.created_at, "dd MMM DD HH:mm:ss ZZ YYYY");
+
+      if(momentOne.isBefore(momentTwo)) {
+        return 1;
+      }
+      else {
+        return -1;
+      }
+    });
+    res.json(sorted);
   });
 });
 
